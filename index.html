@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>PNG</title>
+		<style>
+			
+			* {
+				margin:0;
+				padding:0;
+			}
+			
+			input {
+				position:absolute;
+				z-index:1000;
+				left:0;	top:0;
+			}
+			
+			input:focus{
+				outline: none;
+			}
+			
+			
+		</style>
+		<!--
+			The license of the libraries used in the project.
+			https://zlib.net/zlib_license.html
+			https://github.com/randy408/libspng/blob/master/LICENSE
+		-->
+		<script src="libs.js"></script>
+	</head>
+	<body>
+		<script>
+		
+			const body = document.body;
+		
+			const input = document.createElement("input");
+			input.type = "file";
+			input.accept = "image/png";
+			body.appendChild(input);
+			
+			const canvas = document.createElement("canvas");
+		 	body.appendChild(canvas);
+		
+			input.addEventListener("change",function(){
+								
+				if(this.files.length>0) {
+					const file = this.files[0];
+					const reader = new FileReader();
+					reader.addEventListener("load",function(e) {
+						
+						const bytes = new Uint8Array(e.target.result);
+						
+						var src = Module._malloc(bytes.byteLength);
+
+						var png = new Uint8Array(
+							Module.HEAPU8.buffer,
+							src,
+							bytes.byteLength
+						);
+						png.set(bytes);
+						
+						
+						/*
+						console.log(String.fromCharCode(bytes[1]));
+						console.log(String.fromCharCode(bytes[2]));
+						console.log(String.fromCharCode(bytes[3]));
+						console.log(String.fromCharCode(bytes[12]));
+						console.log(String.fromCharCode(bytes[13]));
+						console.log(String.fromCharCode(bytes[14]));
+						console.log(String.fromCharCode(bytes[15]));
+						*/
+						
+						const w = ((bytes[16]<<24)|(bytes[17]<<16)|(bytes[18]<<8)|bytes[19]);
+						const h = ((bytes[20]<<24)|(bytes[21]<<16)|(bytes[22]<<8)|bytes[23]);
+						
+						console.log(w,h);
+						
+						canvas.width  = w;
+						canvas.height = h;
+						
+						const ctx = canvas.getContext("2d");
+						var imageData = ctx.getImageData(0,0,w,h);
+						var data = imageData.data;
+
+						var dst = Module._malloc((w*h)<<2);
+						
+						var pixels = new Uint8Array(
+							Module.HEAPU8.buffer,
+							dst,
+							((w*h)<<2)
+						);
+						
+						Module.cwrap("decode","void",["number","number","number","number","number","number"])(
+							pixels.byteOffset,
+							w,h,
+							png.byteOffset,
+							png.byteLength
+						);
+
+						
+						for(var i=0; i<h; i++) {
+							for(var j=0; j<w; j++) {
+								var addr  = (i*w+j)<<2;
+								data[addr+0] = pixels[addr+0]; // r
+								data[addr+1] = pixels[addr+1]; // g
+								data[addr+2] = pixels[addr+2]; // b
+								data[addr+3] = pixels[addr+3]; // a
+								
+							}	
+						}
+						
+						ctx.putImageData(imageData,0,0);
+																		
+						Module._free(dst);
+						Module._free(src);
+						
+						input.value = "";
+
+						
+					});
+					reader.readAsArrayBuffer(file);
+					
+				}
+			});
+			
+		</script>
+	</body>
+</html>
